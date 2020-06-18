@@ -1,8 +1,11 @@
 import 'dart:collection';
 import 'dart:ui';
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Key, AbstractNode;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart' hide Key;
+import 'package:flutter_render/my_render/my_key.dart';
+import 'package:flutter_render/my_render/my_node.dart';
 
 ///    author : linchenpeng
 ///    date   : 2020/6/18 9:37 AM
@@ -36,6 +39,21 @@ abstract class ProxyWidget extends Widget {
   final Widget child;
 }
 
+/// ParentDataWidget
+abstract class ParentDataWidget<T extends ParentData> extends ProxyWidget {
+  const ParentDataWidget({Key key, Widget child})
+      : super(key: key, child: child);
+
+  @override
+  ParentDataElement<T> createElement() => ParentDataElement<T>(this);
+
+  @protected
+  void applyParentData(RenderObject renderObject);
+
+  @protected
+  bool debugCanApplyOutOfTurn() => false;
+}
+
 /// InheritedWidget
 abstract class InheritedWidget extends ProxyWidget {
   const InheritedWidget({Key key, Widget child})
@@ -46,6 +64,26 @@ abstract class InheritedWidget extends ProxyWidget {
 
   @protected
   bool updateShouldNotify(covariant InheritedWidget oldWidget);
+}
+
+/// RenderObjectWidget
+abstract class RenderObjectWidget extends Widget {
+  const RenderObjectWidget({Key key}) : super(key: key);
+
+  @override
+  @factory
+  RenderObjectElement createElement();
+
+  @protected
+  @factory
+  RenderObject createRenderObject(BuildContext context);
+
+  @protected
+  void updateRenderObject(
+      BuildContext context, covariant RenderObject renderObject);
+
+  @protected
+  void didUnmountRenderObject(covariant RenderObject renderObject) {}
 }
 
 /// StatelessWidget
@@ -644,7 +682,7 @@ class InheritedElement extends ProxyElement {
   }
 
   @override
-  void udpated(InheritedWidget oldWidget) {
+  void updated(InheritedWidget oldWidget) {
     if (widget.updateShouldNotify(oldWidget)) {
       super.updated(oldWidget);
     }
@@ -658,9 +696,347 @@ class InheritedElement extends ProxyElement {
   }
 }
 
+/// RenderObjectElement
+abstract class RenderObjectElement extends Element {
+  RenderObjectElement(RenderObjectWidget widget) : super(widget);
+
+  @override
+  RenderObjectWidget get widget => super.widget as RenderObjectWidget;
+
+  @override
+  RenderObject get renderObject => _renderObject;
+  RenderObject _renderObject;
+
+  RenderObjectElement _ancestorRenderObjectElement;
+
+  RenderObjectElement _findAncestorRenderObjectElement() {
+    Element ancestor = _parent;
+    while (ancestor != null && ancestor is! RenderObjectElement) {
+      ancestor = ancestor._parent;
+    }
+    return ancestor as RenderObjectElement;
+  }
+
+  ParentDataElement<ParentData> _findAncesotrParentDataElement() {
+    Element ancestor = _parent;
+    ParentDataElement<ParentData> result;
+    while (ancestor != null && ancestor is! RenderObjectElement) {
+      if (ancestor is ParentDataElement<ParentData>) {
+        result = ancestor as ParentDataElement<ParentData>;
+        break;
+      }
+      ancestor = ancestor._parent;
+    }
+    return result;
+  }
+
+  @override
+  void mount(Element parent, newSlot) {
+    super.mount(parent, newSlot);
+    _renderObject = widget.createRenderObject(this);
+
+    attachRenderObject(newSlot);
+    _dirty = false;
+  }
+
+  @override
+  void update(covariant RenderObjectWidget newWidget) {
+    super.update(newWidget);
+
+    widget.updateRenderObject(this, renderObject);
+    _dirty = false;
+  }
+
+  @override
+  void performRebuild() {
+    widget.updateRenderObject(this, renderObject);
+    _dirty = false;
+  }
+
+  @protected
+  List<Element> updateChildren(
+      List<Element> oldChildren, List<Widget> newWidgets,
+      {Set<Element> forgottenChildren}) {
+    Element replaceWithNullIfForgotten(Element child) {
+      return forgottenChildren != null && forgottenChildren.contains(child)
+          ? null
+          : child;
+    }
+
+    // This attempts to diff the new child list (newWidgets) with
+    // the old child list (oldChildren), and produce a new list of elements to
+    // be the new list of child elements of this element. The called of this
+    // method is expected to update this render object accordingly.
+
+    // The cases it tries to optimize for are:
+    //  - the old list is empty
+    //  - the lists are identical
+    //  - there is an insertion or removal of one or more widgets in
+    //    only one place in the list
+    // If a widget with a key is in both lists, it will be synced.
+    // Widgets without keys might be synced but there is no guarantee.
+
+    // The general approach is to sync the entire new list backwards, as follows:
+    // 1. Walk the lists from the top, syncing nodes, until you no longer have
+    //    matching nodes.
+    // 2. Walk the lists from the bottom, without syncing nodes, until you no
+    //    longer have matching nodes. We'll sync these nodes at the end. We
+    //    don't sync them now because we want to sync all the nodes in order
+    //    from beginning to end.
+    // At this point we narrowed the old and new lists to the point
+    // where the nodes no longer match.
+    // 3. Walk the narrowed part of the old list to get the list of
+    //    keys and sync null with non-keyed items.
+    // 4. Walk the narrowed part of the new list forwards:
+    //     * Sync non-keyed items with null
+    //     * Sync keyed items with the source if it exists, else with null.
+    // 5. Walk the bottom of the list again, syncing the nodes.
+    // 6. Sync null with any items in the list of keys that are still
+    //    mounted.
+
+    int newChildrenTop = 0;
+    int oldChildrenTop = 0;
+    int newChildrenBottom = newWidgets.length - 1;
+    int oldChildrenBottom = oldChildren.length - 1;
+
+    final List<Element> newChildren = oldChildren.length == newWidgets.length
+        ? oldChildren
+        : List<Element>(newWidgets.length);
+
+    Element previousChild;
+
+    // Update the top of the list.
+    while ((oldChildrenTop <= oldChildrenBottom) &&
+        (newChildrenTop <= newChildrenBottom)) {
+      final Element oldChild =
+          replaceWithNullIfForgotten(oldChildren[oldChildrenTop]);
+      final Widget newWidget = newWidgets[newChildrenTop];
+      if (oldChild == null || !Widget.canUpdate(oldChild.widget, newWidget))
+        break;
+      final Element newChild = updateChild(oldChild, newWidget,
+          IndexedSlot<Element>(newChildrenTop, previousChild));
+      newChildren[newChildrenTop] = newChild;
+      previousChild = newChild;
+      newChildrenTop += 1;
+      oldChildrenTop += 1;
+    }
+
+    // Scan the bottom of the list.
+    while ((oldChildrenTop <= oldChildrenBottom) &&
+        (newChildrenTop <= newChildrenBottom)) {
+      final Element oldChild =
+          replaceWithNullIfForgotten(oldChildren[oldChildrenBottom]);
+      final Widget newWidget = newWidgets[newChildrenBottom];
+      if (oldChild == null || !Widget.canUpdate(oldChild.widget, newWidget))
+        break;
+      oldChildrenBottom -= 1;
+      newChildrenBottom -= 1;
+    }
+
+    // Scan the old children in the middle of the list.
+    final bool haveOldChildren = oldChildrenTop <= oldChildrenBottom;
+    Map<Key, Element> oldKeyedChildren;
+    if (haveOldChildren) {
+      oldKeyedChildren = <Key, Element>{};
+      while (oldChildrenTop <= oldChildrenBottom) {
+        final Element oldChild =
+            replaceWithNullIfForgotten(oldChildren[oldChildrenTop]);
+        if (oldChild != null) {
+          if (oldChild.widget.key != null)
+            oldKeyedChildren[oldChild.widget.key] = oldChild;
+          else
+            deactivateChild(oldChild);
+        }
+        oldChildrenTop += 1;
+      }
+    }
+
+    // Update the middle of the list.
+    while (newChildrenTop <= newChildrenBottom) {
+      Element oldChild;
+      final Widget newWidget = newWidgets[newChildrenTop];
+      if (haveOldChildren) {
+        final Key key = newWidget.key;
+        if (key != null) {
+          oldChild = oldKeyedChildren[key];
+          if (oldChild != null) {
+            if (Widget.canUpdate(oldChild.widget, newWidget)) {
+              // we found a match!
+              // remove it from oldKeyedChildren so we don't unsync it later
+              oldKeyedChildren.remove(key);
+            } else {
+              // Not a match, let's pretend we didn't see it for now.
+              oldChild = null;
+            }
+          }
+        }
+      }
+      final Element newChild = updateChild(oldChild, newWidget,
+          IndexedSlot<Element>(newChildrenTop, previousChild));
+      newChildren[newChildrenTop] = newChild;
+      previousChild = newChild;
+      newChildrenTop += 1;
+    }
+
+    // We've scanned the whole list.
+    newChildrenBottom = newWidgets.length - 1;
+    oldChildrenBottom = oldChildren.length - 1;
+
+    // Update the bottom of the list.
+    while ((oldChildrenTop <= oldChildrenBottom) &&
+        (newChildrenTop <= newChildrenBottom)) {
+      final Element oldChild = oldChildren[oldChildrenTop];
+      final Widget newWidget = newWidgets[newChildrenTop];
+      final Element newChild = updateChild(oldChild, newWidget,
+          IndexedSlot<Element>(newChildrenTop, previousChild));
+      newChildren[newChildrenTop] = newChild;
+      previousChild = newChild;
+      newChildrenTop += 1;
+      oldChildrenTop += 1;
+    }
+
+    // Clean up any of the remaining middle nodes from the old list.
+    if (haveOldChildren && oldKeyedChildren.isNotEmpty) {
+      for (final Element oldChild in oldKeyedChildren.values) {
+        if (forgottenChildren == null || !forgottenChildren.contains(oldChild))
+          deactivateChild(oldChild);
+      }
+    }
+
+    return newChildren;
+  }
+
+  @override
+  void deactivate() {
+    super.deactivate();
+  }
+
+  @override
+  void unmount() {
+    super.unmount();
+    widget.didUnmountRenderObject(renderObject);
+  }
+
+  void _updateParentData(ParentDataWidget<ParentData> parentDataWidget) {
+    parentDataWidget.applyParentData(renderObject);
+  }
+
+  @override
+  void _updateSlot(newSlot) {
+    super._updateSlot(newSlot);
+    _ancestorRenderObjectElement.moveChildRenderObject(renderObject, slot);
+  }
+
+  @override
+  void attachRenderObject(dynamic newSlot) {
+    _slot = newSlot;
+    _ancestorRenderObjectElement = _findAncestorRenderObjectElement();
+    _ancestorRenderObjectElement?.insertChildRenderObject(
+        renderObject, newSlot);
+    final ParentDataElement<ParentData> parentDataElement =
+        _findAncesotrParentDataElement();
+    if (parentDataElement != null) {
+      _updateParentData(parentDataElement.widget);
+    }
+  }
+
+  @override
+  void detachRenderObject() {
+    if (_ancestorRenderObjectElement != null) {
+      _ancestorRenderObjectElement.removeChildRenderObject(renderObject);
+      _ancestorRenderObjectElement = null;
+    }
+    _slot = null;
+  }
+
+  @protected
+  void insertChildRenderObject(
+      covariant RenderObject child, covariant dynamic slot);
+
+  @protected
+  void moveChildRenderObject(
+      covariant RenderObject child, covariant dynamic slot);
+
+  @protected
+  void removeChildRenderObject(covariant RenderObject child);
+}
+
+@immutable
+class IndexedSlot<T> {
+  /// Creates an [IndexedSlot] with the provided [index] and slot [value].
+  const IndexedSlot(this.index, this.value);
+
+  /// Information to define where the child occupying this slot fits in its
+  /// parent's child list.
+  final T value;
+
+  /// The index of this slot in the parent's child list.
+  final int index;
+
+  @override
+  bool operator ==(Object other) {
+    if (other.runtimeType != runtimeType) return false;
+    return other is IndexedSlot && index == other.index && value == other.value;
+  }
+
+  @override
+  int get hashCode => hashValues(index, value);
+}
+
+/// ParentDataElement
+class ParentDataElement<T extends ParentData> extends ProxyElement {
+  ParentDataElement(ParentDataWidget<T> widget) : super(widget);
+
+  @override
+  ParentDataWidget get widget => super.widget as ParentDataWidget<T>;
+
+  void _applyParentData(ParentDataWidget<T> widget) {
+    void applyParentDataToChild(Element child) {
+      if (child is RenderObjectElement) {
+        child._updateParentData(widget);
+      } else {
+        child.visitChildren(applyParentDataToChild);
+      }
+    }
+
+    visitChildren(applyParentDataToChild);
+  }
+
+  void applyWidgetOutOfTurn(ParentDataWidget<T> newWidget) {
+    _applyParentData(newWidget);
+  }
+
+  @override
+  void notifyClients(ParentDataWidget<T> oldWidget) {
+    _applyParentData(widget);
+  }
+}
+
+class ParentData {
+  @protected
+  @mustCallSuper
+  void detach() {}
+
+  @override
+  String toString() => '<none>';
+}
+
 /// StatelessElement
 class StatelessElement extends ComponentElement {
   StatelessElement(Widget widget) : super(widget);
+
+  @override
+  StatelessWidget get widget => super.widget as StatelessWidget;
+
+  @override
+  Widget build() => widget.build(this);
+
+  @override
+  void update(Widget newWidget) {
+    super.update(newWidget);
+    _dirty = true;
+    rebuild();
+  }
 }
 
 /// StatefulElement
@@ -751,6 +1127,7 @@ class StatefulElement extends ComponentElement {
 abstract class RenderObject {
   Size get size;
 }
+typedef RenderObjectVisitor = void Function(RenderObject child);
 
 /// RenderBox
 abstract class RenderBox extends RenderObject {}
@@ -920,5 +1297,59 @@ class _InactiveElements {
 
   void remove(Element element) {
     _elements.remove(element);
+  }
+}
+
+/// GlobalKey
+@optionalTypeArgs
+abstract class GlobalKey<T extends State<StatefulWidget>> extends Key {
+  factory GlobalKey({String debugLevel}) => LabeledGlobalKey<T>(debugLevel);
+
+  const GlobalKey.constructor() : super.empty();
+
+  static final Map<GlobalKey, Element> _registry = <GlobalKey, Element>{};
+
+  void _register(Element element) {
+    _registry[this] = element;
+  }
+
+  void _unregister(Element element) {
+    if (_registry[this] == element) {
+      _registry.remove(this);
+    }
+  }
+
+  Element get _currentElement => _registry[this];
+
+  BuildContext get currentContext => _currentElement;
+
+  Widget get currentWidget => _currentElement?.widget;
+
+  T get currentState {
+    final Element element = _currentElement;
+    if (element is StatefulElement) {
+      final StatefulElement statefulElement = element;
+      final State state = statefulElement.state;
+      if (state is T) {
+        return state;
+      }
+    }
+    return null;
+  }
+}
+
+@optionalTypeArgs
+class LabeledGlobalKey<T extends State<StatefulWidget>> extends GlobalKey<T> {
+  LabeledGlobalKey(this._debugLevel) : super.constructor();
+
+  final String _debugLevel;
+
+  @override
+  String toString() {
+    final String label = _debugLevel != null ? ' $_debugLevel' : '';
+    if (runtimeType == LabeledGlobalKey) {
+      return '[GlobalKey#${shortHash(this)}$label]';
+    }
+    return '[${describeIdentity(this)}$label]';
   }
 }
