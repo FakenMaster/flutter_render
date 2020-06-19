@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart' hide Key, AbstractNode;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart' hide Key;
 import 'package:flutter_render/my_render/my_key.dart';
@@ -71,11 +72,11 @@ abstract class RenderObjectWidget extends Widget {
   const RenderObjectWidget({Key key}) : super(key: key);
 
   @override
-  @factory
+  // @factory
   RenderObjectElement createElement();
 
   @protected
-  @factory
+  // @factory
   RenderObject createRenderObject(BuildContext context);
 
   @protected
@@ -84,6 +85,36 @@ abstract class RenderObjectWidget extends Widget {
 
   @protected
   void didUnmountRenderObject(covariant RenderObject renderObject) {}
+}
+
+/// LeafRenderObjectWidget
+abstract class LeafRenderObjectWidget extends RenderObjectWidget {
+  const LeafRenderObjectWidget({Key key}) : super(key: key);
+
+  @override
+  LeafRenderObjectElement createElement() => LeafRenderObjectElement(this);
+}
+
+/// SingleChildRenderObjectWidget
+abstract class SingleChildRenderObjectWidget extends RenderObjectWidget {
+  const SingleChildRenderObjectWidget({Key key, this.child}) : super(key: key);
+
+  final Widget child;
+
+  @override
+  SingleChildRenderObjectElement createElement() =>
+      SingleChildRenderObjectElement(this);
+}
+
+abstract class MultiChildRenderObjectWidget extends RenderObjectWidget {
+  final List<Widget> children;
+
+  MultiChildRenderObjectWidget({Key key, this.children = const <Widget>[]})
+      : super(key: key);
+
+  @override
+  MultiChildRenderObjectElement createElement() =>
+      MultiChildRenderObjectElement(this);
 }
 
 /// StatelessWidget
@@ -961,6 +992,196 @@ abstract class RenderObjectElement extends Element {
   void removeChildRenderObject(covariant RenderObject child);
 }
 
+/// LeafRenderObjectElement
+class LeafRenderObjectElement extends RenderObjectElement {
+  LeafRenderObjectElement(LeafRenderObjectWidget widget) : super(widget);
+
+  @override
+  void insertChildRenderObject(RenderObject child, slot) {}
+
+  @override
+  void moveChildRenderObject(RenderObject child, slot) {}
+
+  @override
+  void removeChildRenderObject(RenderObject child) {}
+}
+
+/// SingleChildRenderObjectElement
+class SingleChildRenderObjectElement extends RenderObjectElement {
+  SingleChildRenderObjectElement(SingleChildRenderObjectWidget widget)
+      : super(widget);
+
+  @override
+  SingleChildRenderObjectWidget get widget =>
+      super.widget as SingleChildRenderObjectWidget;
+
+  Element _child;
+
+  @override
+  void visitChildren(ElementVisitor visitor) {
+    if (_child != null) {
+      visitor(_child);
+    }
+  }
+
+  @override
+  void forgetChild(Element child) {
+    _child = null;
+    super.forgetChild(child);
+  }
+
+  @override
+  void mount(Element parent, dynamic newSlot) {
+    super.mount(parent, newSlot);
+    _child = updateChild(_child, widget.child, null);
+  }
+
+  @override
+  void update(SingleChildRenderObjectWidget newWidget) {
+    super.update(newWidget);
+    _child = updateChild(_child, widget.child, null);
+  }
+
+  @override
+  void insertChildRenderObject(RenderObject child, slot) {
+    final RenderObjectWithChildMixin<RenderObject> renderObject =
+        this.renderObject as RenderObjectWithChildMixin<RenderObject>;
+    renderObject.child = child;
+  }
+
+  @override
+  void removeChildRenderObject(RenderObject child) {
+    final RenderObjectWithChildMixin<RenderObject> renderObject =
+        this.renderObject as RenderObjectWithChildMixin<RenderObject>;
+    renderObject.child = null;
+  }
+
+  @override
+  void moveChildRenderObject(RenderObject child, slot) {}
+}
+
+mixin RenderObjectWithChildMixin<ChildType extends RenderObject>
+    on RenderObject {
+  ChildType _child;
+
+  /// The render object's unique child
+  ChildType get child => _child;
+
+  set child(ChildType value) {
+    if (_child != null) dropChild(_child);
+    _child = value;
+    if (_child != null) adoptChild(_child);
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    if (_child != null) _child.attach(owner);
+  }
+
+  @override
+  void detach() {
+    super.detach();
+    if (_child != null) _child.detach();
+  }
+
+  @override
+  void redepthChildren() {
+    if (_child != null) redepthChild(_child);
+  }
+
+  @override
+  void visitChildren(RenderObjectVisitor visitor) {
+    if (_child != null) visitor(_child);
+  }
+}
+
+class MultiChildRenderObjectElement extends RenderObjectElement {
+  /// Creates an element that uses the given widget as its configuration.
+  MultiChildRenderObjectElement(MultiChildRenderObjectWidget widget)
+      : super(widget);
+
+  @override
+  MultiChildRenderObjectWidget get widget =>
+      super.widget as MultiChildRenderObjectWidget;
+
+  /// The current list of children of this element.
+  ///
+  /// This list is filtered to hide elements that have been forgotten (using
+  /// [forgetChild]).
+  @protected
+  @visibleForTesting
+  Iterable<Element> get children =>
+      _children.where((Element child) => !_forgottenChildren.contains(child));
+
+  List<Element> _children;
+
+  // We keep a set of forgotten children to avoid O(n^2) work walking _children
+  // repeatedly to remove children.
+  final Set<Element> _forgottenChildren = HashSet<Element>();
+
+  @override
+  void insertChildRenderObject(RenderObject child, IndexedSlot<Element> slot) {
+    final ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>> renderObject =
+        this.renderObject as ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>>;
+    renderObject.insert(child, after: slot?.value?.renderObject);
+  }
+
+  @override
+  void moveChildRenderObject(RenderObject child, IndexedSlot<Element> slot) {
+    final ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>> renderObject =
+        this.renderObject as ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>>;
+    renderObject.move(child, after: slot?.value?.renderObject);
+  }
+
+  @override
+  void removeChildRenderObject(RenderObject child) {
+    final ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>> renderObject =
+        this.renderObject as ContainerRenderObjectMixin<RenderObject,
+            ContainerParentDataMixin<RenderObject>>;
+    renderObject.remove(child);
+  }
+
+  @override
+  void visitChildren(ElementVisitor visitor) {
+    for (final Element child in _children) {
+      if (!_forgottenChildren.contains(child)) visitor(child);
+    }
+  }
+
+  @override
+  void forgetChild(Element child) {
+    _forgottenChildren.add(child);
+    super.forgetChild(child);
+  }
+
+  @override
+  void mount(Element parent, dynamic newSlot) {
+    super.mount(parent, newSlot);
+    _children = List<Element>(widget.children.length);
+    Element previousChild;
+    for (int i = 0; i < _children.length; i += 1) {
+      final Element newChild = inflateWidget(
+          widget.children[i], IndexedSlot<Element>(i, previousChild));
+      _children[i] = newChild;
+      previousChild = newChild;
+    }
+  }
+
+  @override
+  void update(MultiChildRenderObjectWidget newWidget) {
+    super.update(newWidget);
+    _children = updateChildren(_children, widget.children,
+        forgottenChildren: _forgottenChildren);
+    _forgottenChildren.clear();
+  }
+}
+
 @immutable
 class IndexedSlot<T> {
   /// Creates an [IndexedSlot] with the provided [index] and slot [value].
@@ -1124,9 +1345,733 @@ class StatefulElement extends ComponentElement {
 }
 
 /// RenderObject
-abstract class RenderObject {
-  Size get size;
+abstract class RenderObject extends AbstractNode implements HitTestTarget {
+  /// Initializes internal fields for subclasses.
+  RenderObject() {
+    _needsCompositing = isRepaintBoundary || alwaysNeedsCompositing;
+  }
+
+  void reassemble() {
+    markNeedsLayout();
+    markNeedsCompositingBitsUpdate();
+    markNeedsPaint();
+    markNeedsSemanticsUpdate();
+    visitChildren((RenderObject child) {
+      child.reassemble();
+    });
+  }
+
+  ParentData parentData;
+
+  void setupParentData(covariant RenderObject child) {
+    if (child.parentData is! ParentData) child.parentData = ParentData();
+  }
+
+  @override
+  void adoptChild(RenderObject child) {
+    setupParentData(child);
+    markNeedsLayout();
+    markNeedsCompositingBitsUpdate();
+    markNeedsSemanticsUpdate();
+    super.adoptChild(child);
+  }
+
+  @override
+  void dropChild(RenderObject child) {
+    child._cleanRelayoutBoundary();
+    child.parentData.detach();
+    child.parentData = null;
+    super.dropChild(child);
+    markNeedsLayout();
+    markNeedsCompositingBitsUpdate();
+    markNeedsSemanticsUpdate();
+  }
+
+  void visitChildren(RenderObjectVisitor visitor) {}
+
+  @override
+  PipelineOwner get owner => super.owner as PipelineOwner;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    if (_needsLayout && _relayoutBoundary != null) {
+      _needsLayout = false;
+      markNeedsLayout();
+    }
+    if (_needsCompositingBitsUpdate) {
+      _needsCompositingBitsUpdate = false;
+      markNeedsCompositingBitsUpdate();
+    }
+    if (_needsPaint && _layer != null) {
+      _needsPaint = false;
+      markNeedsPaint();
+    }
+    if (_needsSemanticsUpdate && _semanticsConfiguration.isSemanticBoundary) {
+      _needsSemanticsUpdate = false;
+      markNeedsSemanticsUpdate();
+    }
+  }
+
+  bool _needsLayout = true;
+
+  RenderObject _relayoutBoundary;
+  bool _doingThisLayoutWithCallback = false;
+
+  @protected
+  Constraints get constraints => _constraints;
+  Constraints _constraints;
+
+  void markNeedsLayout() {
+    if (_needsLayout) {
+      return;
+    }
+    if (_relayoutBoundary != this) {
+      markParentNeedsLayout();
+    } else {
+      _needsLayout = true;
+      if (owner != null) {
+        owner._nodesNeedingLayout.add(this);
+        owner.requestVisualUpdate();
+      }
+    }
+  }
+
+  @protected
+  void markParentNeedsLayout() {
+    _needsLayout = true;
+    final RenderObject parent = this.parent as RenderObject;
+    if (!_doingThisLayoutWithCallback) {
+      parent.markNeedsLayout();
+    } else {}
+  }
+
+  void markNeedsLayoutForSizedByParentChange() {
+    markNeedsLayout();
+    markParentNeedsLayout();
+  }
+
+  void _cleanRelayoutBoundary() {
+    if (_relayoutBoundary != this) {
+      _relayoutBoundary = null;
+      _needsLayout = true;
+      visitChildren(_cleanChildRelayoutBoundary);
+    }
+  }
+
+  // Reduces closure allocation for visitChildren use cases.
+  static void _cleanChildRelayoutBoundary(RenderObject child) {
+    child._cleanRelayoutBoundary();
+  }
+
+  void scheduleInitialLayout() {
+    _relayoutBoundary = this;
+    owner._nodesNeedingLayout.add(this);
+  }
+
+  void _layoutWithoutResize() {
+    performLayout();
+    markNeedsSemanticsUpdate();
+    _needsLayout = false;
+    markNeedsPaint();
+  }
+
+  void layout(Constraints constraints, {bool parentUsesSize = false}) {
+    RenderObject relayoutBoundary;
+    if (!parentUsesSize ||
+        sizedByParent ||
+        constraints.isTight ||
+        parent is! RenderObject) {
+      relayoutBoundary = this;
+    } else {
+      relayoutBoundary = (parent as RenderObject)._relayoutBoundary;
+    }
+    if (!_needsLayout &&
+        constraints == _constraints &&
+        relayoutBoundary == _relayoutBoundary) {
+      return;
+    }
+    _constraints = constraints;
+    if (_relayoutBoundary != null && relayoutBoundary != _relayoutBoundary) {
+      visitChildren(_cleanChildRelayoutBoundary);
+    }
+    _relayoutBoundary = relayoutBoundary;
+    if (sizedByParent) {
+      performResize();
+    }
+    performLayout();
+    markNeedsSemanticsUpdate();
+    _needsLayout = false;
+    markNeedsPaint();
+  }
+
+  @protected
+  bool get sizedByParent => false;
+
+  @protected
+  void performResize();
+
+  @protected
+  void performLayout();
+
+  @protected
+  void invokeLayoutCallback<T extends Constraints>(LayoutCallback<T> callback) {
+    _doingThisLayoutWithCallback = true;
+    try {
+      owner._enableMutationsToDirtySubtrees(() {
+        callback(constraints as T);
+      });
+    } finally {
+      _doingThisLayoutWithCallback = false;
+    }
+  }
+
+  /// Rotate this render object (not yet implemented).
+  void rotate({
+    int oldAngle, // 0..3
+    int newAngle, // 0..3
+    Duration time,
+  }) {}
+
+  bool get isRepaintBoundary => false;
+
+  @protected
+  bool get alwaysNeedsCompositing => false;
+
+  @protected
+  ContainerLayer get layer {
+    assert(!isRepaintBoundary || (_layer == null || _layer is OffsetLayer));
+    return _layer;
+  }
+
+  @protected
+  set layer(ContainerLayer newLayer) {
+    _layer = newLayer;
+  }
+
+  ContainerLayer _layer;
+
+  bool _needsCompositingBitsUpdate = false; // set to true when a child is added
+  void markNeedsCompositingBitsUpdate() {
+    if (_needsCompositingBitsUpdate) return;
+    _needsCompositingBitsUpdate = true;
+    if (parent is RenderObject) {
+      final RenderObject parent = this.parent as RenderObject;
+      if (parent._needsCompositingBitsUpdate) return;
+      if (!isRepaintBoundary && !parent.isRepaintBoundary) {
+        parent.markNeedsCompositingBitsUpdate();
+        return;
+      }
+    }
+    // parent is fine (or there isn't one), but we are dirty
+    if (owner != null) owner._nodesNeedingCompositingBitsUpdate.add(this);
+  }
+
+  bool _needsCompositing; // initialized in the constructor
+  bool get needsCompositing {
+    return _needsCompositing;
+  }
+
+  void _updateCompositingBits() {
+    if (!_needsCompositingBitsUpdate) return;
+    final bool oldNeedsCompositing = _needsCompositing;
+    _needsCompositing = false;
+    visitChildren((RenderObject child) {
+      child._updateCompositingBits();
+      if (child.needsCompositing) _needsCompositing = true;
+    });
+    if (isRepaintBoundary || alwaysNeedsCompositing) _needsCompositing = true;
+    if (oldNeedsCompositing != _needsCompositing) markNeedsPaint();
+    _needsCompositingBitsUpdate = false;
+  }
+
+  bool _needsPaint = true;
+
+  void markNeedsPaint() {
+    if (_needsPaint) return;
+    _needsPaint = true;
+    if (isRepaintBoundary) {
+      if (owner != null) {
+        owner._nodesNeedingPaint.add(this);
+        owner.requestVisualUpdate();
+      }
+    } else if (parent is RenderObject) {
+      final RenderObject parent = this.parent as RenderObject;
+      parent.markNeedsPaint();
+    } else {
+      if (owner != null) owner.requestVisualUpdate();
+    }
+  }
+
+  // Called when flushPaint() tries to make us paint but our layer is detached.
+  // To make sure that our subtree is repainted when it's finally reattached,
+  // even in the case where some ancestor layer is itself never marked dirty, we
+  // have to mark our entire detached subtree as dirty and needing to be
+  // repainted. That way, we'll eventually be repainted.
+  void _skippedPaintingOnLayer() {
+    AbstractNode ancestor = parent;
+    while (ancestor is RenderObject) {
+      final RenderObject node = ancestor as RenderObject;
+      if (node.isRepaintBoundary) {
+        if (node._layer == null)
+          break; // looks like the subtree here has never been painted. let it handle itself.
+        if (node._layer.attached)
+          break; // it's the one that detached us, so it's the one that will decide to repaint us.
+        node._needsPaint = true;
+      }
+      ancestor = node.parent;
+    }
+  }
+
+  /// Bootstrap the rendering pipeline by scheduling the very first paint.
+  ///
+  /// Requires that this render object is attached, is the root of the render
+  /// tree, and has a composited layer.
+  ///
+  /// See [RenderView] for an example of how this function is used.
+  void scheduleInitialPaint(ContainerLayer rootLayer) {
+    _layer = rootLayer;
+    owner._nodesNeedingPaint.add(this);
+  }
+
+  /// Replace the layer. This is only valid for the root of a render
+  /// object subtree (whatever object [scheduleInitialPaint] was
+  /// called on).
+  ///
+  /// This might be called if, e.g., the device pixel ratio changed.
+  void replaceRootLayer(OffsetLayer rootLayer) {
+    // use scheduleInitialPaint the first time
+    _layer.detach();
+    _layer = rootLayer;
+    markNeedsPaint();
+  }
+
+  void _paintWithContext(PaintingContext context, Offset offset) {
+    // If we still need layout, then that means that we were skipped in the
+    // layout phase and therefore don't need painting. We might not know that
+    // yet (that is, our layer might not have been detached yet), because the
+    // same node that skipped us in layout is above us in the tree (obviously)
+    // and therefore may not have had a chance to paint yet (since the tree
+    // paints in reverse order). In particular this will happen if they have
+    // a different layer, because there's a repaint boundary between us.
+    if (_needsLayout) return;
+
+    _needsPaint = false;
+    paint(context, offset);
+  }
+
+  Rect get paintBounds;
+
+  void paint(PaintingContext context, Offset offset) {}
+
+  void applyPaintTransform(covariant RenderObject child, Matrix4 transform) {
+    assert(child.parent == this);
+  }
+
+  Matrix4 getTransformTo(RenderObject ancestor) {
+    final bool ancestorSpecified = ancestor != null;
+    if (ancestor == null) {
+      final AbstractNode rootNode = owner.rootNode;
+      if (rootNode is RenderObject) ancestor = rootNode;
+    }
+    final List<RenderObject> renderers = <RenderObject>[];
+    for (RenderObject renderer = this;
+        renderer != ancestor;
+        renderer = renderer.parent as RenderObject) {
+      renderers.add(renderer);
+    }
+    if (ancestorSpecified) renderers.add(ancestor);
+    final Matrix4 transform = Matrix4.identity();
+    for (int index = renderers.length - 1; index > 0; index -= 1) {
+      renderers[index].applyPaintTransform(renderers[index - 1], transform);
+    }
+    return transform;
+  }
+
+  Rect describeApproximatePaintClip(covariant RenderObject child) => null;
+
+  /// Returns a rect in this object's coordinate system that describes
+  /// which [SemanticsNode]s produced by the `child` should be included in the
+  /// semantics tree. [SemanticsNode]s from the `child` that are positioned
+  /// outside of this rect will be dropped. Child [SemanticsNode]s that are
+  /// positioned inside this rect, but outside of [describeApproximatePaintClip]
+  /// will be included in the tree marked as hidden. Child [SemanticsNode]s
+  /// that are inside of both rect will be included in the tree as regular
+  /// nodes.
+  ///
+  /// This method only returns a non-null value if the semantics clip rect
+  /// is different from the rect returned by [describeApproximatePaintClip].
+  /// If the semantics clip rect and the paint clip rect are the same, this
+  /// method returns null.
+  ///
+  /// A viewport would typically implement this method to include semantic nodes
+  /// in the semantics tree that are currently hidden just before the leading
+  /// or just after the trailing edge. These nodes have to be included in the
+  /// semantics tree to implement implicit accessibility scrolling on iOS where
+  /// the viewport scrolls implicitly when moving the accessibility focus from
+  /// a the last visible node in the viewport to the first hidden one.
+  Rect describeSemanticsClip(covariant RenderObject child) => null;
+
+  // SEMANTICS
+
+  /// Bootstrap the semantics reporting mechanism by marking this node
+  /// as needing a semantics update.
+  ///
+  /// Requires that this render object is attached, and is the root of
+  /// the render tree.
+  ///
+  /// See [RendererBinding] for an example of how this function is used.
+  void scheduleInitialSemantics() {
+    owner._nodesNeedingSemantics.add(this);
+    owner.requestVisualUpdate();
+  }
+
+  /// Report the semantics of this node, for example for accessibility purposes.
+  ///
+  /// This method should be overridden by subclasses that have interesting
+  /// semantic information.
+  ///
+  /// The given [SemanticsConfiguration] object is mutable and should be
+  /// annotated in a manner that describes the current state. No reference
+  /// should be kept to that object; mutating it outside of the context of the
+  /// [describeSemanticsConfiguration] call (for example as a result of
+  /// asynchronous computation) will at best have no useful effect and at worse
+  /// will cause crashes as the data will be in an inconsistent state.
+  ///
+  /// {@tool snippet}
+  ///
+  /// The following snippet will describe the node as a button that responds to
+  /// tap actions.
+  ///
+  /// ```dart
+  /// abstract class SemanticButtonRenderObject extends RenderObject {
+  ///   @override
+  ///   void describeSemanticsConfiguration(SemanticsConfiguration config) {
+  ///     super.describeSemanticsConfiguration(config);
+  ///     config
+  ///       ..onTap = _handleTap
+  ///       ..label = 'I am a button'
+  ///       ..isButton = true;
+  ///   }
+  ///
+  ///   void _handleTap() {
+  ///     // Do something.
+  ///   }
+  /// }
+  /// ```
+  /// {@end-tool}
+  @protected
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    // Nothing to do by default.
+  }
+
+  /// Sends a [SemanticsEvent] associated with this render object's [SemanticsNode].
+  ///
+  /// If this render object has no semantics information, the first parent
+  /// render object with a non-null semantic node is used.
+  ///
+  /// If semantics are disabled, no events are dispatched.
+  ///
+  /// See [SemanticsNode.sendEvent] for a full description of the behavior.
+  void sendSemanticsEvent(SemanticsEvent semanticsEvent) {
+    if (owner.semanticsOwner == null) return;
+    if (_semantics != null && !_semantics.isMergedIntoParent) {
+      _semantics.sendEvent(semanticsEvent);
+    } else if (parent != null) {
+      final RenderObject renderParent = parent as RenderObject;
+      renderParent.sendSemanticsEvent(semanticsEvent);
+    }
+  }
+
+  // Use [_semanticsConfiguration] to access.
+  SemanticsConfiguration _cachedSemanticsConfiguration;
+
+  SemanticsConfiguration get _semanticsConfiguration {
+    if (_cachedSemanticsConfiguration == null) {
+      _cachedSemanticsConfiguration = SemanticsConfiguration();
+      describeSemanticsConfiguration(_cachedSemanticsConfiguration);
+    }
+    return _cachedSemanticsConfiguration;
+  }
+
+  /// The bounding box, in the local coordinate system, of this
+  /// object, for accessibility purposes.
+  Rect get semanticBounds;
+
+  bool _needsSemanticsUpdate = true;
+  SemanticsNode _semantics;
+
+  /// The semantics of this render object.
+  ///
+  /// Exposed only for testing and debugging. To learn about the semantics of
+  /// render objects in production, obtain a [SemanticsHandle] from
+  /// [PipelineOwner.ensureSemantics].
+  ///
+  /// Only valid in debug and profile mode. In release builds, always returns
+  /// null.
+  SemanticsNode get debugSemantics {
+    if (!kReleaseMode) {
+      return _semantics;
+    }
+    return null;
+  }
+
+  /// Removes all semantics from this render object and its descendants.
+  ///
+  /// Should only be called on objects whose [parent] is not a [RenderObject].
+  ///
+  /// Override this method if you instantiate new [SemanticsNode]s in an
+  /// overridden [assembleSemanticsNode] method, to dispose of those nodes.
+  @mustCallSuper
+  void clearSemantics() {
+    _needsSemanticsUpdate = true;
+    _semantics = null;
+    visitChildren((RenderObject child) {
+      child.clearSemantics();
+    });
+  }
+
+  /// Mark this node as needing an update to its semantics description.
+  ///
+  /// This must be called whenever the semantics configuration of this
+  /// [RenderObject] as annotated by [describeSemanticsConfiguration] changes in
+  /// any way to update the semantics tree.
+  void markNeedsSemanticsUpdate() {
+    if (!attached || owner._semanticsOwner == null) {
+      _cachedSemanticsConfiguration = null;
+      return;
+    }
+
+    // Dirty the semantics tree starting at `this` until we have reached a
+    // RenderObject that is a semantics boundary. All semantics past this
+    // RenderObject are still up-to date. Therefore, we will later only rebuild
+    // the semantics subtree starting at the identified semantics boundary.
+
+    final bool wasSemanticsBoundary = _semantics != null &&
+        _cachedSemanticsConfiguration?.isSemanticBoundary == true;
+    _cachedSemanticsConfiguration = null;
+    bool isEffectiveSemanticsBoundary =
+        _semanticsConfiguration.isSemanticBoundary && wasSemanticsBoundary;
+    RenderObject node = this;
+
+    while (!isEffectiveSemanticsBoundary && node.parent is RenderObject) {
+      if (node != this && node._needsSemanticsUpdate) break;
+      node._needsSemanticsUpdate = true;
+
+      node = node.parent as RenderObject;
+      isEffectiveSemanticsBoundary =
+          node._semanticsConfiguration.isSemanticBoundary;
+      if (isEffectiveSemanticsBoundary && node._semantics == null) {
+        // We have reached a semantics boundary that doesn't own a semantics node.
+        // That means the semantics of this branch are currently blocked and will
+        // not appear in the semantics tree. We can abort the walk here.
+        return;
+      }
+    }
+    if (node != this && _semantics != null && _needsSemanticsUpdate) {
+      // If `this` node has already been added to [owner._nodesNeedingSemantics]
+      // remove it as it is no longer guaranteed that its semantics
+      // node will continue to be in the tree. If it still is in the tree, the
+      // ancestor `node` added to [owner._nodesNeedingSemantics] at the end of
+      // this block will ensure that the semantics of `this` node actually gets
+      // updated.
+      // (See semantics_10_test.dart for an example why this is required).
+      owner._nodesNeedingSemantics.remove(this);
+    }
+    if (!node._needsSemanticsUpdate) {
+      node._needsSemanticsUpdate = true;
+      if (owner != null) {
+        owner._nodesNeedingSemantics.add(node);
+        owner.requestVisualUpdate();
+      }
+    }
+  }
+
+  /// Updates the semantic information of the render object.
+  void _updateSemantics() {
+    if (_needsLayout) {
+      // There's not enough information in this subtree to compute semantics.
+      // The subtree is probably being kept alive by a viewport but not laid out.
+      return;
+    }
+    final _SemanticsFragment fragment = _getSemanticsForParent(
+      mergeIntoParent: _semantics?.parent?.isPartOfNodeMerging ?? false,
+    );
+    final _InterestingSemanticsFragment interestingFragment =
+        fragment as _InterestingSemanticsFragment;
+    final SemanticsNode node = interestingFragment
+        .compileChildren(
+          parentSemanticsClipRect: _semantics?.parentSemanticsClipRect,
+          parentPaintClipRect: _semantics?.parentPaintClipRect,
+          elevationAdjustment: _semantics?.elevationAdjustment ?? 0.0,
+        )
+        .single;
+  }
+
+  /// Returns the semantics that this node would like to add to its parent.
+  _SemanticsFragment _getSemanticsForParent({
+    @required bool mergeIntoParent,
+  }) {
+    final SemanticsConfiguration config = _semanticsConfiguration;
+    bool dropSemanticsOfPreviousSiblings =
+        config.isBlockingSemanticsOfPreviouslyPaintedNodes;
+
+    final bool producesForkingFragment =
+        !config.hasBeenAnnotated && !config.isSemanticBoundary;
+    final List<_InterestingSemanticsFragment> fragments =
+        <_InterestingSemanticsFragment>[];
+    final Set<_InterestingSemanticsFragment> toBeMarkedExplicit =
+        <_InterestingSemanticsFragment>{};
+    final bool childrenMergeIntoParent =
+        mergeIntoParent || config.isMergingSemanticsOfDescendants;
+
+    // When set to true there's currently not enough information in this subtree
+    // to compute semantics. In this case the walk needs to be aborted and no
+    // SemanticsNodes in the subtree should be updated.
+    // This will be true for subtrees that are currently kept alive by a
+    // viewport but not laid out.
+    bool abortWalk = false;
+
+    visitChildrenForSemantics((RenderObject renderChild) {
+      if (abortWalk || _needsLayout) {
+        abortWalk = true;
+        return;
+      }
+      final _SemanticsFragment parentFragment =
+          renderChild._getSemanticsForParent(
+        mergeIntoParent: childrenMergeIntoParent,
+      );
+      if (parentFragment.abortsWalk) {
+        abortWalk = true;
+        return;
+      }
+      if (parentFragment.dropsSemanticsOfPreviousSiblings) {
+        fragments.clear();
+        toBeMarkedExplicit.clear();
+        if (!config.isSemanticBoundary) dropSemanticsOfPreviousSiblings = true;
+      }
+      // Figure out which child fragments are to be made explicit.
+      for (final _InterestingSemanticsFragment fragment
+          in parentFragment.interestingFragments) {
+        fragments.add(fragment);
+        fragment.addAncestor(this);
+        fragment.addTags(config.tagsForChildren);
+        if (config.explicitChildNodes || parent is! RenderObject) {
+          fragment.markAsExplicit();
+          continue;
+        }
+        if (!fragment.hasConfigForParent || producesForkingFragment) continue;
+        if (!config.isCompatibleWith(fragment.config))
+          toBeMarkedExplicit.add(fragment);
+        for (final _InterestingSemanticsFragment siblingFragment
+            in fragments.sublist(0, fragments.length - 1)) {
+          if (!fragment.config.isCompatibleWith(siblingFragment.config)) {
+            toBeMarkedExplicit.add(fragment);
+            toBeMarkedExplicit.add(siblingFragment);
+          }
+        }
+      }
+    });
+
+    if (abortWalk) {
+      return _AbortingSemanticsFragment(owner: this);
+    }
+
+    for (final _InterestingSemanticsFragment fragment in toBeMarkedExplicit)
+      fragment.markAsExplicit();
+
+    _needsSemanticsUpdate = false;
+
+    _SemanticsFragment result;
+    if (parent is! RenderObject) {
+      result = _RootSemanticsFragment(
+        owner: this,
+        dropsSemanticsOfPreviousSiblings: dropSemanticsOfPreviousSiblings,
+      );
+    } else if (producesForkingFragment) {
+      result = _ContainerSemanticsFragment(
+        dropsSemanticsOfPreviousSiblings: dropSemanticsOfPreviousSiblings,
+      );
+    } else {
+      result = _SwitchableSemanticsFragment(
+        config: config,
+        mergeIntoParent: mergeIntoParent,
+        owner: this,
+        dropsSemanticsOfPreviousSiblings: dropSemanticsOfPreviousSiblings,
+      );
+      if (config.isSemanticBoundary) {
+        final _SwitchableSemanticsFragment fragment =
+            result as _SwitchableSemanticsFragment;
+        fragment.markAsExplicit();
+      }
+    }
+
+    result.addAll(fragments);
+
+    return result;
+  }
+
+  /// Called when collecting the semantics of this node.
+  ///
+  /// The implementation has to return the children in paint order skipping all
+  /// children that are not semantically relevant (e.g. because they are
+  /// invisible).
+  ///
+  /// The default implementation mirrors the behavior of
+  /// [visitChildren] (which is supposed to walk all the children).
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    visitChildren(visitor);
+  }
+
+  /// Assemble the [SemanticsNode] for this [RenderObject].
+  ///
+  /// If [isSemanticBoundary] is true, this method is called with the `node`
+  /// created for this [RenderObject], the `config` to be applied to that node
+  /// and the `children` [SemanticsNode]s that descendants of this RenderObject
+  /// have generated.
+  ///
+  /// By default, the method will annotate `node` with `config` and add the
+  /// `children` to it.
+  ///
+  /// Subclasses can override this method to add additional [SemanticsNode]s
+  /// to the tree. If new [SemanticsNode]s are instantiated in this method
+  /// they must be disposed in [clearSemantics].
+  void assembleSemanticsNode(
+    CustomPaint
+    SemanticsNode node,
+    SemanticsConfiguration config,
+    Iterable<SemanticsNode> children,
+  ) {
+    // TODO(a14n): remove the following cast by updating type of parameter in either updateWith or assembleSemanticsNode
+    node.updateWith(
+        config: config,
+        childrenInInversePaintOrder: children as List<SemanticsNode>);
+  }
+
+  // EVENTS
+
+  /// Override this method to handle pointer events that hit this render object.
+  @override
+  void handleEvent(PointerEvent event, covariant HitTestEntry entry) {}
+
+  void showOnScreen({
+    RenderObject descendant,
+    Rect rect,
+    Duration duration = Duration.zero,
+    Curve curve = Curves.ease,
+  }) {
+    if (parent is RenderObject) {
+      final RenderObject renderParent = parent as RenderObject;
+      renderParent.showOnScreen(
+        descendant: descendant ?? this,
+        rect: rect,
+        duration: duration,
+        curve: curve,
+      );
+    }
+  }
 }
+
 typedef RenderObjectVisitor = void Function(RenderObject child);
 
 /// RenderBox
@@ -1351,5 +2296,208 @@ class LabeledGlobalKey<T extends State<StatefulWidget>> extends GlobalKey<T> {
       return '[GlobalKey#${shortHash(this)}$label]';
     }
     return '[${describeIdentity(this)}$label]';
+  }
+}
+
+mixin ContainerParentDataMixin<ChildType extends RenderObject> on ParentData {
+  /// The previous sibling in the parent's child list.
+  ChildType previousSibling;
+
+  /// The next sibling in the parent's child list.
+  ChildType nextSibling;
+
+  /// Clear the sibling pointers.
+  @override
+  void detach() {
+    super.detach();
+  }
+}
+
+mixin ContainerRenderObjectMixin<ChildType extends RenderObject,
+        ParentDataType extends ContainerParentDataMixin<ChildType>>
+    on RenderObject {
+  int _childCount = 0;
+
+  /// The number of children.
+  int get childCount => _childCount;
+
+  ChildType _firstChild;
+  ChildType _lastChild;
+  void _insertIntoChildList(ChildType child, {ChildType after}) {
+    final ParentDataType childParentData = child.parentData as ParentDataType;
+    assert(childParentData.nextSibling == null);
+    _childCount += 1;
+    assert(_childCount > 0);
+    if (after == null) {
+      // insert at the start (_firstChild)
+      childParentData.nextSibling = _firstChild;
+      if (_firstChild != null) {
+        final ParentDataType _firstChildParentData =
+            _firstChild.parentData as ParentDataType;
+        _firstChildParentData.previousSibling = child;
+      }
+      _firstChild = child;
+      _lastChild ??= child;
+    } else {
+      final ParentDataType afterParentData = after.parentData as ParentDataType;
+      if (afterParentData.nextSibling == null) {
+        // insert at the end (_lastChild); we'll end up with two or more children
+        childParentData.previousSibling = after;
+        afterParentData.nextSibling = child;
+        _lastChild = child;
+      } else {
+        // insert in the middle; we'll end up with three or more children
+        // set up links from child to siblings
+        childParentData.nextSibling = afterParentData.nextSibling;
+        childParentData.previousSibling = after;
+        // set up links from siblings to child
+        final ParentDataType childPreviousSiblingParentData =
+            childParentData.previousSibling.parentData as ParentDataType;
+        final ParentDataType childNextSiblingParentData =
+            childParentData.nextSibling.parentData as ParentDataType;
+        childPreviousSiblingParentData.nextSibling = child;
+        childNextSiblingParentData.previousSibling = child;
+      }
+    }
+  }
+
+  /// Insert child into this render object's child list after the given child.
+  ///
+  /// If `after` is null, then this inserts the child at the start of the list,
+  /// and the child becomes the new [firstChild].
+  void insert(ChildType child, {ChildType after}) {
+    adoptChild(child);
+    _insertIntoChildList(child, after: after);
+  }
+
+  /// Append child to the end of this render object's child list.
+  void add(ChildType child) {
+    insert(child, after: _lastChild);
+  }
+
+  /// Add all the children to the end of this render object's child list.
+  void addAll(List<ChildType> children) {
+    children?.forEach(add);
+  }
+
+  void _removeFromChildList(ChildType child) {
+    final ParentDataType childParentData = child.parentData as ParentDataType;
+    if (childParentData.previousSibling == null) {
+      _firstChild = childParentData.nextSibling;
+    } else {
+      final ParentDataType childPreviousSiblingParentData =
+          childParentData.previousSibling.parentData as ParentDataType;
+      childPreviousSiblingParentData.nextSibling = childParentData.nextSibling;
+    }
+    if (childParentData.nextSibling == null) {
+      _lastChild = childParentData.previousSibling;
+    } else {
+      final ParentDataType childNextSiblingParentData =
+          childParentData.nextSibling.parentData as ParentDataType;
+      childNextSiblingParentData.previousSibling =
+          childParentData.previousSibling;
+    }
+    childParentData.previousSibling = null;
+    childParentData.nextSibling = null;
+    _childCount -= 1;
+  }
+
+  /// Remove this child from the child list.
+  ///
+  /// Requires the child to be present in the child list.
+  void remove(ChildType child) {
+    _removeFromChildList(child);
+    dropChild(child);
+  }
+
+  /// Remove all their children from this render object's child list.
+  ///
+  /// More efficient than removing them individually.
+  void removeAll() {
+    ChildType child = _firstChild;
+    while (child != null) {
+      final ParentDataType childParentData = child.parentData as ParentDataType;
+      final ChildType next = childParentData.nextSibling;
+      childParentData.previousSibling = null;
+      childParentData.nextSibling = null;
+      dropChild(child);
+      child = next;
+    }
+    _firstChild = null;
+    _lastChild = null;
+    _childCount = 0;
+  }
+
+  /// Move the given `child` in the child list to be after another child.
+  ///
+  /// More efficient than removing and re-adding the child. Requires the child
+  /// to already be in the child list at some position. Pass null for `after` to
+  /// move the child to the start of the child list.
+  void move(ChildType child, {ChildType after}) {
+    final ParentDataType childParentData = child.parentData as ParentDataType;
+    if (childParentData.previousSibling == after) return;
+    _removeFromChildList(child);
+    _insertIntoChildList(child, after: after);
+    markNeedsLayout();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    ChildType child = _firstChild;
+    while (child != null) {
+      child.attach(owner);
+      final ParentDataType childParentData = child.parentData as ParentDataType;
+      child = childParentData.nextSibling;
+    }
+  }
+
+  @override
+  void detach() {
+    super.detach();
+    ChildType child = _firstChild;
+    while (child != null) {
+      child.detach();
+      final ParentDataType childParentData = child.parentData as ParentDataType;
+      child = childParentData.nextSibling;
+    }
+  }
+
+  @override
+  void redepthChildren() {
+    ChildType child = _firstChild;
+    while (child != null) {
+      redepthChild(child);
+      final ParentDataType childParentData = child.parentData as ParentDataType;
+      child = childParentData.nextSibling;
+    }
+  }
+
+  @override
+  void visitChildren(RenderObjectVisitor visitor) {
+    ChildType child = _firstChild;
+    while (child != null) {
+      visitor(child);
+      final ParentDataType childParentData = child.parentData as ParentDataType;
+      child = childParentData.nextSibling;
+    }
+  }
+
+  /// The first child in the child list.
+  ChildType get firstChild => _firstChild;
+
+  /// The last child in the child list.
+  ChildType get lastChild => _lastChild;
+
+  /// The previous child before the given child in the child list.
+  ChildType childBefore(ChildType child) {
+    final ParentDataType childParentData = child.parentData as ParentDataType;
+    return childParentData.previousSibling;
+  }
+
+  /// The next child after the given child in the child list.
+  ChildType childAfter(ChildType child) {
+    final ParentDataType childParentData = child.parentData as ParentDataType;
+    return childParentData.nextSibling;
   }
 }
