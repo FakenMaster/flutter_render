@@ -1,0 +1,632 @@
+@startuml
+set namespaceSeparator ::
+
+abstract class "flutter_render::nested.dart::SingleChildWidgetElementMixin" {
+  -_NestedHookElement _parent
+  +void mount()
+  +void activate()
+}
+
+"flutter_render::nested.dart::SingleChildWidgetElementMixin" o-- "flutter_render::nested.dart::_NestedHookElement"
+
+abstract class "flutter_render::nested.dart::SingleChildStatelessWidgetMixin" {
+  +Widget child
+  -Widget _child
+  +SingleChildStatelessElement createElement()
+  +Widget build()
+}
+
+"flutter_render::nested.dart::SingleChildStatelessWidgetMixin" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "flutter_render::nested.dart::SingleChildStatelessWidgetMixin"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::nested.dart::SingleChildStatelessWidgetMixin"
+
+abstract class "flutter_render::nested.dart::SingleChildStatefulWidgetMixin" {
+  +Widget child
+  +_SingleChildStatefulMixinElement createElement()
+}
+
+"flutter_render::nested.dart::SingleChildStatefulWidgetMixin" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter_render::nested.dart::SingleChildWidget" <|-- "flutter_render::nested.dart::SingleChildStatefulWidgetMixin"
+
+abstract class "flutter_render::nested.dart::SingleChildStateMixin<T>" {
+  +Widget buildWithChild()
+  +Widget build()
+}
+
+abstract class "flutter_render::nested.dart::SingleChildInheritedElementMixin" {
+  +Widget build()
+}
+
+class "flutter_render::nested.dart::Nested" {
+  -List<SingleChildWidget> _children
+  -Widget _child
+  +Widget build()
+  +_NestedElement createElement()
+}
+
+"flutter_render::nested.dart::Nested" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "flutter_render::nested.dart::Nested"
+"flutter_render::nested.dart::SingleChildWidget" <|-- "flutter_render::nested.dart::Nested"
+
+class "flutter_render::nested.dart::_NestedElement" {
+  +Set<_NestedHookElement> nodes
+  +Nested widget
+  +Widget build()
+}
+
+"flutter_render::nested.dart::_NestedElement" o-- "flutter_render::nested.dart::Nested"
+"flutter::src::widgets::framework.dart::StatelessElement" <|-- "flutter_render::nested.dart::_NestedElement"
+"flutter_render::nested.dart::SingleChildWidgetElementMixin" <|-- "flutter_render::nested.dart::_NestedElement"
+
+class "flutter_render::nested.dart::_NestedHook" {
+  +SingleChildWidget wrappedWidget
+  +Widget injectedChild
+  +_NestedElement owner
+  +_NestedHookElement createElement()
+  +Widget build()
+}
+
+"flutter_render::nested.dart::_NestedHook" o-- "flutter_render::nested.dart::SingleChildWidget"
+"flutter_render::nested.dart::_NestedHook" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter_render::nested.dart::_NestedHook" o-- "flutter_render::nested.dart::_NestedElement"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "flutter_render::nested.dart::_NestedHook"
+
+class "flutter_render::nested.dart::_NestedHookElement" {
+  -Widget _injectedChild
+  -SingleChildWidget _wrappedChild
+  +_NestedHook widget
+  +Widget injectedChild
+  +SingleChildWidget wrappedChild
+  +void mount()
+  +void unmount()
+  +Widget build()
+}
+
+"flutter_render::nested.dart::_NestedHookElement" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter_render::nested.dart::_NestedHookElement" o-- "flutter_render::nested.dart::SingleChildWidget"
+"flutter_render::nested.dart::_NestedHookElement" o-- "flutter_render::nested.dart::_NestedHook"
+"flutter::src::widgets::framework.dart::StatelessElement" <|-- "flutter_render::nested.dart::_NestedHookElement"
+
+abstract class "flutter_render::nested.dart::SingleChildWidget" {
+  +SingleChildWidgetElementMixin createElement()
+}
+
+"flutter::src::widgets::framework.dart::Widget" <|-- "flutter_render::nested.dart::SingleChildWidget"
+
+abstract class "flutter_render::nested.dart::SingleChildStatelessWidget" {
+  -Widget _child
+  +Widget buildWithChild()
+  +Widget build()
+  +SingleChildStatelessElement createElement()
+}
+
+"flutter_render::nested.dart::SingleChildStatelessWidget" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter::src::widgets::framework.dart::StatelessWidget" <|-- "flutter_render::nested.dart::SingleChildStatelessWidget"
+"flutter_render::nested.dart::SingleChildWidget" <|-- "flutter_render::nested.dart::SingleChildStatelessWidget"
+
+class "flutter_render::nested.dart::SingleChildStatelessElement" {
+  +SingleChildStatelessWidget widget
+  +Widget build()
+}
+
+"flutter_render::nested.dart::SingleChildStatelessElement" o-- "flutter_render::nested.dart::SingleChildStatelessWidget"
+"flutter::src::widgets::framework.dart::StatelessElement" <|-- "flutter_render::nested.dart::SingleChildStatelessElement"
+"flutter_render::nested.dart::SingleChildWidgetElementMixin" <|-- "flutter_render::nested.dart::SingleChildStatelessElement"
+
+abstract class "flutter_render::nested.dart::SingleChildStatefulWidget" {
+  -Widget _child
+  +SingleChildStatefulElement createElement()
+}
+
+"flutter_render::nested.dart::SingleChildStatefulWidget" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter::src::widgets::framework.dart::StatefulWidget" <|-- "flutter_render::nested.dart::SingleChildStatefulWidget"
+"flutter_render::nested.dart::SingleChildWidget" <|-- "flutter_render::nested.dart::SingleChildStatefulWidget"
+
+abstract class "flutter_render::nested.dart::SingleChildState<T>" {
+  +Widget buildWithChild()
+  +Widget build()
+}
+
+"flutter::src::widgets::framework.dart::State<T>" <|-- "flutter_render::nested.dart::SingleChildState<T>"
+
+class "flutter_render::nested.dart::SingleChildStatefulElement" {
+  +SingleChildStatefulWidget widget
+  +SingleChildState<SingleChildStatefulWidget> state
+  +Widget build()
+}
+
+"flutter_render::nested.dart::SingleChildStatefulElement" o-- "flutter_render::nested.dart::SingleChildStatefulWidget"
+"flutter_render::nested.dart::SingleChildStatefulElement" o-- "flutter_render::nested.dart::SingleChildState<SingleChildStatefulWidget>"
+"flutter::src::widgets::framework.dart::StatefulElement" <|-- "flutter_render::nested.dart::SingleChildStatefulElement"
+"flutter_render::nested.dart::SingleChildWidgetElementMixin" <|-- "flutter_render::nested.dart::SingleChildStatefulElement"
+
+class "flutter_render::nested.dart::SingleChildBuilder" {
+  +Widget Function(BuildContext, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::nested.dart::SingleChildBuilder" o-- "flutter_render::nested.dart::Widget Function(BuildContext, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::nested.dart::SingleChildBuilder"
+
+class "flutter_render::nested.dart::_SingleChildStatefulMixinElement" {
+  +SingleChildStatefulWidgetMixin widget
+  +SingleChildStateMixin<StatefulWidget> state
+  +Widget build()
+}
+
+"flutter_render::nested.dart::_SingleChildStatefulMixinElement" o-- "flutter_render::nested.dart::SingleChildStatefulWidgetMixin"
+"flutter_render::nested.dart::_SingleChildStatefulMixinElement" o-- "flutter_render::nested.dart::SingleChildStateMixin<StatefulWidget>"
+"flutter::src::widgets::framework.dart::StatefulElement" <|-- "flutter_render::nested.dart::_SingleChildStatefulMixinElement"
+"flutter_render::nested.dart::SingleChildWidgetElementMixin" <|-- "flutter_render::nested.dart::_SingleChildStatefulMixinElement"
+
+class "flutter_render::src::provider.dart::MultiProvider" {
+}
+
+"flutter_render::nested.dart::Nested" <|-- "flutter_render::src::provider.dart::MultiProvider"
+
+class "flutter_render::src::provider.dart::Provider<T>" {
+  {static} +void Function<T>(T) debugCheckInvalidValueType
+  {static} +T of()
+  {static} -_InheritedProviderScopeElement _inheritedElementOf()
+}
+
+"flutter_render::src::provider.dart::Provider<T>" o-- "flutter_render::src::provider.dart::void Function<T>(T)"
+"flutter_render::src::provider.dart::InheritedProvider<T>" <|-- "flutter_render::src::provider.dart::Provider<T>"
+
+class "flutter_render::src::provider.dart::ProviderNotFoundException" {
+  +Type valueType
+  +Type widgetType
+  +String toString()
+}
+
+"dart::core::Exception" <|-- "flutter_render::src::provider.dart::ProviderNotFoundException"
+
+class "flutter_render::src::provider.dart::InheritedProvider<T>" {
+  -_Delegate<T> _delegate
+  -bool _lazy
+  -Widget Function(BuildContext, Widget) _builder
+  +void debugFillProperties()
+  +_InheritedProviderElement createElement()
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::provider.dart::InheritedProvider<T>" o-- "flutter_render::src::provider.dart::_Delegate<T>"
+"flutter_render::src::provider.dart::InheritedProvider<T>" o-- "flutter::src::widgets::framework.dart::Widget Function(BuildContext, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::provider.dart::InheritedProvider<T>"
+
+class "flutter_render::src::provider.dart::_InheritedProviderElement<T>" {
+  +void debugFillProperties()
+}
+
+"flutter_render::nested.dart::SingleChildStatelessElement" <|-- "flutter_render::src::provider.dart::_InheritedProviderElement<T>"
+
+abstract class "flutter_render::src::provider.dart::InheritedContext<T>" {
+  +T value
+  +bool hasValue
+  +void markNeedsNotifyDependents()
+}
+
+class "flutter_render::src::provider.dart::_InheritedProviderScope<T>" {
+  +InheritedProvider<T> owner
+  +bool updateShouldNotify()
+  +_InheritedProviderScopeElement createElement()
+}
+
+"flutter_render::src::provider.dart::_InheritedProviderScope<T>" o-- "flutter_render::src::provider.dart::InheritedProvider<T>"
+"flutter::src::widgets::framework.dart::InheritedWidget" <|-- "flutter_render::src::provider.dart::_InheritedProviderScope<T>"
+
+class "flutter_render::src::provider.dart::_Dependency<T>" {
+  +bool shouldClearSelectors
+  +bool shouldClearMutationScheduled
+  +List<bool Function(T)> selectors
+}
+
+class "flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>" {
+  -bool _shouldNotifyDependents
+  -bool _debugInheritLocked
+  -bool _isNotifyDependentsEnabled
+  -bool _firstBuild
+  -bool _updatedShouldNotify
+  -bool _isBuildFromExternalSources
+  -_DelegateState<T, _Delegate<T>> _delegateState
+  +_InheritedProviderScope<T> widget
+  +bool hasValue
+  +T value
+  +void updateDependencies()
+  +void notifyDependent()
+  +void performRebuild()
+  +void update()
+  +void updated()
+  +void didChangeDependencies()
+  +Widget build()
+  +void unmount()
+  +void markNeedsNotifyDependents()
+  -bool _debugSetInheritedLock()
+  +InheritedWidget dependOnInheritedElement()
+  +void debugFillProperties()
+}
+
+"flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>" o-- "flutter_render::src::provider.dart::_DelegateState<T, _Delegate<T>>"
+"flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>" o-- "flutter_render::src::provider.dart::_InheritedProviderScope<T>"
+"flutter::src::widgets::framework.dart::InheritedElement" <|-- "flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>"
+"flutter_render::src::provider.dart::InheritedContext<T>" <|-- "flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>"
+
+abstract class "flutter_render::src::provider.dart::_Delegate<T>" {
+  +_DelegateState createState()
+  +void debugFillProperties()
+}
+
+abstract class "flutter_render::src::provider.dart::_DelegateState<T, D>" {
+  +_InheritedProviderScopeElement<T> element
+  +T value
+  +D delegate
+  +bool hasValue
+  +bool debugSetInheritedLock()
+  +bool willUpdateDelegate()
+  +void dispose()
+  +void debugFillProperties()
+  +void build()
+}
+
+"flutter_render::src::provider.dart::_DelegateState<T, D>" o-- "flutter_render::src::provider.dart::_InheritedProviderScopeElement<T>"
+
+class "flutter_render::src::provider.dart::_CreateInheritedProvider<T>" {
+  +T Function(dynamic) create
+  +T Function(dynamic, T) update
+  -bool Function(T, T) _updateShouldNotify
+  +void Function(T) debugCheckInvalidValueType
+  +void Function() Function(InheritedContext<T>, T) startListening
+  +void Function(dynamic, T) dispose
+  +_CreateInheritedProviderState createState()
+}
+
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::T Function(dynamic)"
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::T Function(dynamic, T)"
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::bool Function(T, T)"
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::void Function(T)"
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::void Function() Function(InheritedContext<T>, T)"
+"flutter_render::src::provider.dart::_CreateInheritedProvider<T>" o-- "flutter_render::src::provider.dart::void Function(dynamic, T)"
+"flutter_render::src::provider.dart::_Delegate<T>" <|-- "flutter_render::src::provider.dart::_CreateInheritedProvider<T>"
+
+class "flutter_render::src::provider.dart::_CreateInheritedProviderState<T>" {
+  -void Function() _removeListener
+  -bool _didInitValue
+  -T _value
+  -_CreateInheritedProvider<T> _previousWidget
+  +T value
+  +bool hasValue
+  +void dispose()
+  +void debugFillProperties()
+  +void build()
+}
+
+"flutter_render::src::provider.dart::_CreateInheritedProviderState<T>" o-- "dart::ui::void Function()"
+"flutter_render::src::provider.dart::_CreateInheritedProviderState<T>" o-- "flutter_render::src::provider.dart::_CreateInheritedProvider<T>"
+"flutter_render::src::provider.dart::_DelegateState<T, D>" <|-- "flutter_render::src::provider.dart::_CreateInheritedProviderState<T>"
+
+class "flutter_render::src::provider.dart::_ValueInheritedProvider<T>" {
+  +T value
+  -bool Function(T, T) _updateShouldNotify
+  +void Function() Function(InheritedContext<T>, T) startListening
+  +void debugFillProperties()
+  +_ValueInheritedProviderState createState()
+}
+
+"flutter_render::src::provider.dart::_ValueInheritedProvider<T>" o-- "flutter_render::src::provider.dart::bool Function(T, T)"
+"flutter_render::src::provider.dart::_ValueInheritedProvider<T>" o-- "flutter_render::src::provider.dart::void Function() Function(InheritedContext<T>, T)"
+"flutter_render::src::provider.dart::_Delegate<T>" <|-- "flutter_render::src::provider.dart::_ValueInheritedProvider<T>"
+
+class "flutter_render::src::provider.dart::_ValueInheritedProviderState<T>" {
+  -void Function() _removeListener
+  +T value
+  +bool hasValue
+  +bool willUpdateDelegate()
+  +void dispose()
+  +void debugFillProperties()
+}
+
+"flutter_render::src::provider.dart::_ValueInheritedProviderState<T>" o-- "dart::ui::void Function()"
+"flutter_render::src::provider.dart::_DelegateState<T, D>" <|-- "flutter_render::src::provider.dart::_ValueInheritedProviderState<T>"
+
+class "flutter_render::src::provider.dart::DeferredInheritedProvider<T, R>" {
+}
+
+"flutter_render::src::provider.dart::InheritedProvider<T>" <|-- "flutter_render::src::provider.dart::DeferredInheritedProvider<T, R>"
+
+abstract class "flutter_render::src::provider.dart::_DeferredDelegate<T, R>" {
+  +bool Function(R, R) updateShouldNotify
+  +void Function() Function(InheritedContext<R>, void Function(R), T, R) startListening
+  +_DeferredDelegateState createState()
+}
+
+"flutter_render::src::provider.dart::_DeferredDelegate<T, R>" o-- "flutter_render::src::provider.dart::bool Function(R, R)"
+"flutter_render::src::provider.dart::_DeferredDelegate<T, R>" o-- "flutter_render::src::provider.dart::void Function() Function(InheritedContext<R>, void Function(R), T, R)"
+"flutter_render::src::provider.dart::_Delegate<T>" <|-- "flutter_render::src::provider.dart::_DeferredDelegate<T, R>"
+
+abstract class "flutter_render::src::provider.dart::_DeferredDelegateState<T, R, W>" {
+  -void Function() _removeListener
+  -R _value
+  -bool _hasValue
+  +T controller
+  +R value
+  +bool isLoaded
+  +bool hasValue
+  +void dispose()
+  +void setState()
+}
+
+"flutter_render::src::provider.dart::_DeferredDelegateState<T, R, W>" o-- "dart::ui::void Function()"
+"flutter_render::src::provider.dart::_DelegateState<T, D>" <|-- "flutter_render::src::provider.dart::_DeferredDelegateState<T, R, W>"
+
+class "flutter_render::src::provider.dart::_CreateDeferredInheritedProvider<T, R>" {
+  +T Function(dynamic) create
+  +void Function(dynamic, T) dispose
+  +_CreateDeferredInheritedProviderElement createState()
+}
+
+"flutter_render::src::provider.dart::_CreateDeferredInheritedProvider<T, R>" o-- "flutter_render::src::provider.dart::T Function(dynamic)"
+"flutter_render::src::provider.dart::_CreateDeferredInheritedProvider<T, R>" o-- "flutter_render::src::provider.dart::void Function(dynamic, T)"
+"flutter_render::src::provider.dart::_DeferredDelegate<T, R>" <|-- "flutter_render::src::provider.dart::_CreateDeferredInheritedProvider<T, R>"
+
+class "flutter_render::src::provider.dart::_CreateDeferredInheritedProviderElement<T, R>" {
+  -bool _didBuild
+  -T _controller
+  +T controller
+  +void dispose()
+  +void debugFillProperties()
+}
+
+"flutter_render::src::provider.dart::_DeferredDelegateState<T, R, W>" <|-- "flutter_render::src::provider.dart::_CreateDeferredInheritedProviderElement<T, R>"
+
+class "flutter_render::src::provider.dart::_ValueDeferredInheritedProvider<T, R>" {
+  +T value
+  +_ValueDeferredInheritedProviderState createState()
+  +void debugFillProperties()
+}
+
+"flutter_render::src::provider.dart::_DeferredDelegate<T, R>" <|-- "flutter_render::src::provider.dart::_ValueDeferredInheritedProvider<T, R>"
+
+class "flutter_render::src::provider.dart::_ValueDeferredInheritedProviderState<T, R>" {
+  +T controller
+  +bool willUpdateDelegate()
+  +void debugFillProperties()
+}
+
+"flutter_render::src::provider.dart::_DeferredDelegateState<T, R, W>" <|-- "flutter_render::src::provider.dart::_ValueDeferredInheritedProviderState<T, R>"
+
+class "flutter_render::src::async_provider.dart::StreamProvider<T>" {
+}
+
+"flutter_render::src::provider.dart::DeferredInheritedProvider<T, R>" <|-- "flutter_render::src::async_provider.dart::StreamProvider<T>"
+
+class "flutter_render::src::async_provider.dart::FutureProvider<T>" {
+}
+
+"flutter_render::src::provider.dart::DeferredInheritedProvider<T, R>" <|-- "flutter_render::src::async_provider.dart::FutureProvider<T>"
+
+class "flutter_render::src::selector.dart::Selector0<T>" {
+  +Widget Function(BuildContext, T, Widget) builder
+  +T Function(BuildContext) selector
+  -bool Function(T, T) _shouldRebuild
+  +_Selector0State createState()
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" o-- "flutter::src::widgets::value_listenable_builder.dart::Widget Function(BuildContext, T, Widget)"
+"flutter_render::src::selector.dart::Selector0<T>" o-- "flutter_render::src::selector.dart::T Function(BuildContext)"
+"flutter_render::src::selector.dart::Selector0<T>" o-- "flutter_render::src::selector.dart::bool Function(T, T)"
+"flutter_render::nested.dart::SingleChildStatefulWidget" <|-- "flutter_render::src::selector.dart::Selector0<T>"
+
+class "flutter_render::src::selector.dart::_Selector0State<T>" {
+  +T value
+  +Widget cache
+  +Widget oldWidget
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::selector.dart::_Selector0State<T>" o-- "flutter::src::widgets::framework.dart::Widget"
+"flutter_render::nested.dart::SingleChildState<T>" <|-- "flutter_render::src::selector.dart::_Selector0State<T>"
+
+class "flutter_render::src::selector.dart::Selector<A, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector<A, S>"
+
+class "flutter_render::src::selector.dart::Selector2<A, B, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector2<A, B, S>"
+
+class "flutter_render::src::selector.dart::Selector3<A, B, C, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector3<A, B, C, S>"
+
+class "flutter_render::src::selector.dart::Selector4<A, B, C, D, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector4<A, B, C, D, S>"
+
+class "flutter_render::src::selector.dart::Selector5<A, B, C, D, E, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector5<A, B, C, D, E, S>"
+
+class "flutter_render::src::selector.dart::Selector6<A, B, C, D, E, F, S>" {
+}
+
+"flutter_render::src::selector.dart::Selector0<T>" <|-- "flutter_render::src::selector.dart::Selector6<A, B, C, D, E, F, S>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProvider<T>" {
+  {static} -null _startListening()
+}
+
+"flutter_render::src::provider.dart::InheritedProvider<T>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProvider<T>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" {
+}
+
+"flutter_render::src::provider.dart::InheritedProvider<T>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider<T, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider<T, R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider2<T, T2, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider2<T, T2, R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider3<T, T2, T3, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider3<T, T2, T3, R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider4<T, T2, T3, T4, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider4<T, T2, T3, T4, R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider5<T, T2, T3, T4, T5, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider5<T, T2, T3, T4, T5, R>"
+
+class "flutter_render::src::listenable_provider.dart::ListenableProxyProvider6<T, T2, T3, T4, T5, T6, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::listenable_provider.dart::ListenableProxyProvider6<T, T2, T3, T4, T5, T6, R>"
+
+class "flutter_render::src::consumer.dart::Consumer<T>" {
+  +Widget Function(dynamic, T, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer<T>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, T, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer<T>"
+
+class "flutter_render::src::consumer.dart::Consumer2<A, B>" {
+  +Widget Function(dynamic, A, B, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer2<A, B>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, A, B, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer2<A, B>"
+
+class "flutter_render::src::consumer.dart::Consumer3<A, B, C>" {
+  +Widget Function(dynamic, A, B, C, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer3<A, B, C>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, A, B, C, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer3<A, B, C>"
+
+class "flutter_render::src::consumer.dart::Consumer4<A, B, C, D>" {
+  +Widget Function(dynamic, A, B, C, D, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer4<A, B, C, D>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, A, B, C, D, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer4<A, B, C, D>"
+
+class "flutter_render::src::consumer.dart::Consumer5<A, B, C, D, E>" {
+  +Widget Function(dynamic, A, B, C, D, E, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer5<A, B, C, D, E>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, A, B, C, D, E, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer5<A, B, C, D, E>"
+
+class "flutter_render::src::consumer.dart::Consumer6<A, B, C, D, E, F>" {
+  +Widget Function(dynamic, A, B, C, D, E, F, Widget) builder
+  +Widget buildWithChild()
+}
+
+"flutter_render::src::consumer.dart::Consumer6<A, B, C, D, E, F>" o-- "flutter_render::src::consumer.dart::Widget Function(dynamic, A, B, C, D, E, F, Widget)"
+"flutter_render::nested.dart::SingleChildStatelessWidget" <|-- "flutter_render::src::consumer.dart::Consumer6<A, B, C, D, E, F>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProvider<T>" {
+  {static} -void _dispose()
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProvider<T>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProvider<T>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider<T, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider<T, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider<T, R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider0<R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider0<R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider0<R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider2<T, T2, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider2<T, T2, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider2<T, T2, R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider3<T, T2, T3, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider3<T, T2, T3, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider3<T, T2, T3, R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider4<T, T2, T3, T4, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider4<T, T2, T3, T4, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider4<T, T2, T3, T4, R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider5<T, T2, T3, T4, T5, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider5<T, T2, T3, T4, T5, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider5<T, T2, T3, T4, T5, R>"
+
+class "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider6<T, T2, T3, T4, T5, T6, R>" {
+}
+
+"flutter_render::src::listenable_provider.dart::ListenableProxyProvider6<T, T2, T3, T4, T5, T6, R>" <|-- "flutter_render::src::change_notifier_provider.dart::ChangeNotifierProxyProvider6<T, T2, T3, T4, T5, T6, R>"
+
+class "flutter_render::src::value_listenable_provider.dart::ValueListenableProvider<T>" {
+  {static} -void _dispose()
+  {static} -null _startListening()
+}
+
+"flutter_render::src::provider.dart::DeferredInheritedProvider<T, R>" <|-- "flutter_render::src::value_listenable_provider.dart::ValueListenableProvider<T>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" {
+}
+
+"flutter_render::src::provider.dart::InheritedProvider<T>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider0<R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider<T, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider<T, R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider2<T, T2, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider2<T, T2, R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider3<T, T2, T3, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider3<T, T2, T3, R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider4<T, T2, T3, T4, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider4<T, T2, T3, T4, R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider5<T, T2, T3, T4, T5, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider5<T, T2, T3, T4, T5, R>"
+
+class "flutter_render::src::proxy_provider.dart::ProxyProvider6<T, T2, T3, T4, T5, T6, R>" {
+}
+
+"flutter_render::src::proxy_provider.dart::ProxyProvider0<R>" <|-- "flutter_render::src::proxy_provider.dart::ProxyProvider6<T, T2, T3, T4, T5, T6, R>"
+
+
+@enduml

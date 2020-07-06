@@ -1,0 +1,44 @@
+@startuml
+set namespaceSeparator ::
+
+abstract class "flutter_render::my_render::my_change_notifier.dart::Listenable" {
+  +void addListener()
+  +void removeListener()
+}
+
+abstract class "flutter_render::my_render::my_change_notifier.dart::ValueListenable<T>" {
+  +T value
+}
+
+"flutter_render::my_render::my_change_notifier.dart::Listenable" <|-- "flutter_render::my_render::my_change_notifier.dart::ValueListenable<T>"
+
+class "flutter_render::my_render::my_change_notifier.dart::ChangeNotifier" {
+  -ObserverList<void Function()> _listeners
+  +bool hasListeners
+  +void addListener()
+  +void removeListener()
+  +void dispose()
+  #void notifyListeners()
+}
+
+"flutter_render::my_render::my_change_notifier.dart::ChangeNotifier" o-- "flutter::src::foundation::observer_list.dart::ObserverList<void Function()>"
+"flutter_render::my_render::my_change_notifier.dart::Listenable" <|-- "flutter_render::my_render::my_change_notifier.dart::ChangeNotifier"
+
+class "flutter_render::my_render::my_change_notifier.dart::_MergingListenable" {
+  -List<Listenable> _children
+  +void addListener()
+  +void removeListener()
+}
+
+"flutter_render::my_render::my_change_notifier.dart::Listenable" <|-- "flutter_render::my_render::my_change_notifier.dart::_MergingListenable"
+
+class "flutter_render::my_render::my_change_notifier.dart::ValueNotifier<T>" {
+  -T _value
+  +T value
+}
+
+"flutter_render::my_render::my_change_notifier.dart::ChangeNotifier" <|-- "flutter_render::my_render::my_change_notifier.dart::ValueNotifier<T>"
+"flutter_render::my_render::my_change_notifier.dart::ValueListenable<T>" <|-- "flutter_render::my_render::my_change_notifier.dart::ValueNotifier<T>"
+
+
+@enduml
